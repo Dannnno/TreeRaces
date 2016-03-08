@@ -3,7 +3,7 @@ language: cpp
 
 compiler:
   - clang
-  - gcc
+  - g++
 
 addons:
   apt: 
@@ -17,15 +17,16 @@ addons:
       - valgrind
       - libgtest-dev
       - libboost-dev
+      - libstdc++-4.8-dev
 
 install:
-    # Install gtest without sudo 
-    - mkdir ~/gtest && cd ~/gtest
-    - export LIBRARY_PATH=$(pwd)
-    - cp -r /usr/src/gtest/* ./
-    - cmake -D CMAKE_INSTALL_PREFIX:PATH=./ ./
-    - make
-    - cd -
+  # Install gtest without sudo 
+  - mkdir ~/gtest && cd ~/gtest
+  - export LIBRARY_PATH=$(pwd)
+  - cp -r /usr/src/gtest/* ./
+  - cmake -D CMAKE_INSTALL_PREFIX:PATH=./ ./
+  - make
+  - cd -
 
 
 script:
