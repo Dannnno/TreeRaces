@@ -49,10 +49,10 @@ class Octree {
   void swap(tree_type& rhs);
 
   template <typename OutputIterator>
-  bool search(const Point& p, OutputIterator* it) const;
+  bool search(const Point& p, OutputIterator it) const;
 
   template <typename OutputIterator>
-  void search(const BoundingBox& box, OutputIterator* it) const;
+  bool search(const BoundingBox& box, OutputIterator it) const;
 
   tree_type& operator=(tree_type rhs);
 
@@ -90,10 +90,10 @@ class Octree {
     ~Node();
 
     template <typename OutputIterator>
-    bool search(const Point& p, OutputIterator* it);
+    bool search(const Point& p, OutputIterator it) const;
 
     template <typename OutputIterator>
-    void search(const BoundingBox& box, OutputIterator* it);
+    bool search(const BoundingBox& box, OutputIterator it) const;
 
    private:
     void* value_;
@@ -108,10 +108,37 @@ class Octree {
         const std::vector<std::pair<InputIterator, Point>>& input_values,
         size_t current_depth);
 
-    unsigned int getOctantIndex(const Point& p);
+    unsigned int getOctantIndex(const Point& p) const;
 
-    static
-    BoundingBox getExtrema(const std::vector<std::pair<InputIterator, Point>>& input_values);
+    struct InnerIterator {
+      using wrapped_type = typename std::vector<std::pair<InputIterator, Point>>::const_iterator;
+      wrapped_type it_;
+
+      InnerIterator(wrapped_type it) : it_(it) {}
+
+      Point operator*() const {
+        return std::get<1>(*it_);
+      }
+
+      InnerIterator& operator++() {
+        ++it_;
+        return *this;
+      }
+
+      InnerIterator operator++(int) {
+        InnerIterator other = *this;
+        ++it_;
+        return other;
+      }
+
+      bool operator==(const InnerIterator& rhs) const {
+        return it_ == rhs.it_;
+      }
+
+      bool operator!=(const InnerIterator& rhs) const {
+        return !operator==(rhs);
+      }
+    };
   };
 
   PointExtractor functor_;
@@ -158,14 +185,14 @@ void OCTREE::swap(OCTREE::tree_type& rhs) {
 
 template <OCTREE_TEMPLATE>
 template <typename OutputIterator>
-bool OCTREE::search(const Point& p, OutputIterator* it) const {
+bool OCTREE::search(const Point& p, OutputIterator it) const {
   return head_->search(p, it);
 }
 
 template <OCTREE_TEMPLATE>
 template <typename OutputIterator>
-void OCTREE::search(const BoundingBox& box, OutputIterator* it) const {
-  head_->search(box, it);
+bool OCTREE::search(const BoundingBox& box, OutputIterator it) const {
+  return head_->search(box, it);
 }
 
 template <OCTREE_TEMPLATE>
@@ -192,7 +219,12 @@ size_t OCTREE::size() const {
 
 template <OCTREE_TEMPLATE>
 OCTREE::Node::Node(const std::vector<std::pair<InputIterator, Point>>& input_values)
-  : Node(input_values, Node::getExtrema(input_values), 0) { }
+  : Node(input_values, 
+         BoundingBox(
+            InnerIterator(input_values.begin()), 
+            InnerIterator(input_values.end())
+         ),
+         0) { }
 
 template <OCTREE_TEMPLATE>
 OCTREE::Node::Node(
@@ -207,6 +239,7 @@ OCTREE::Node::Node(
     init_internal(input_values, current_depth);
   }
 }
+
 template <OCTREE_TEMPLATE>
 OCTREE::Node::~Node() {
   if (tag_ == NodeContents::INTERNAL) {
@@ -224,22 +257,22 @@ OCTREE::Node::~Node() {
   
   value_ = nullptr;
 }
+
 template <OCTREE_TEMPLATE>
 template <typename OutputIterator>
-bool OCTREE::Node::search(const Point& p, OutputIterator* it) {
+bool OCTREE::Node::search(const Point& p, OutputIterator it) const {
   if (extrema_.contains(p)) {
     if (tag_ == NodeContents::INTERNAL) {
       unsigned index = getOctantIndex(p);
       childNodeArray& children = *static_cast<childNodeArray*>(value_);
       if (children[index] != nullptr) {
-        **it = children[index].search(p);
-        return true;
+        return children[index]->search(p, it);
       }
     } else if (tag_ == NodeContents::LEAF) {
       LeafNodeValues& children = *static_cast<LeafNodeValues*>(value_);
       for (size_t i = 0; i < children.size_; ++i) {
-        if (std::get<1>(children[i]) == p) {
-          **it = std::get<0>(children[i]);
+        if (std::get<1>(children.values_[i]) == p) {
+          *it = std::get<0>(children.values_[i]);
           return true;
         }
       }
@@ -247,7 +280,7 @@ bool OCTREE::Node::search(const Point& p, OutputIterator* it) {
       maxItemNode& children = *static_cast<maxItemNode*>(value_);
       for (auto item : children) {
         if (std::get<1>(item) == p) {
-          **it = std::get<0>(item);
+          *it = std::get<0>(item);
           return true;
         }
       }
@@ -259,9 +292,10 @@ bool OCTREE::Node::search(const Point& p, OutputIterator* it) {
 #define UNUSED(x) (void)(x)
 template <OCTREE_TEMPLATE>
 template <typename OutputIterator>
-void OCTREE::Node::search(const BoundingBox& box, OutputIterator* it) {
+bool OCTREE::Node::search(const BoundingBox& box, OutputIterator it) const {
   UNUSED(box);
   UNUSED(it);
+  return false;
 }
 
 template <OCTREE_TEMPLATE>
@@ -312,7 +346,7 @@ void OCTREE::Node::init_internal(
 }
 
 template <OCTREE_TEMPLATE>
-unsigned int OCTREE::Node::getOctantIndex(const Point& p) {
+unsigned int OCTREE::Node::getOctantIndex(const Point& p) const {
   // children are ordered left to right, front to back, bottom to top.
 
   double xmid = (extrema_.xhi - extrema_.xlo) / 2.;
@@ -336,38 +370,9 @@ unsigned int OCTREE::Node::getOctantIndex(const Point& p) {
     return 5;
   } else if (!bottom && left && !front) {
     return 6;
-  } else if (!bottom && !left && !front) {
+  } else {
     return 7;
   }
-}
-
-template <OCTREE_TEMPLATE>
-BoundingBox OCTREE::Node::getExtrema(
-    const std::vector<std::pair<InputIterator, Point>>& input_values) {
-  BoundingBox b = initial;
-  for (auto value : input_values) {
-    const std::array<double, 3>& point = std::get<1>(value);
-
-    if (point[0] < b.xlo) {
-      b.xlo = point[0];
-    } else if (point[0] > b.xhi) {
-      b.xhi = point[0];
-    }
-
-    if (point[1] < b.ylo) {
-      b.ylo = point[1];
-    } else if (point[1] > b.yhi) {
-      b.yhi = point[1];
-    }
-
-    if (point[2] < b.zlo) {
-      b.zlo = point[2];
-    } else if (point[2] > b.zhi) {
-      b.zhi = point[2];
-    }
-  }
-
-  return b;
 }
 
 #endif // DEFINED OCTREE_CPU_H

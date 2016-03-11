@@ -8,10 +8,22 @@
 #include "../structures/boundingbox.h"
 
 #include "gtest/gtest.h"
+#include <array>
+#include <vector>
 
 using std::array;
+using std::vector;
 
 using Point = array<double, 3>;
+
+TEST(BoundingBoxConstructors, Iterators) {
+	vector<Point> points;
+	points.push_back({{0,0,0}});
+	points.push_back({{10,10,10}});
+	BoundingBox first(points.begin(), points.end());
+	BoundingBox second{10, 0, 10, 0, 10, 0};
+	EXPECT_EQ(first, second);
+}
 
 TEST(BoundingBox, ContainsOtherBoxEqual) {
 	BoundingBox first, second;

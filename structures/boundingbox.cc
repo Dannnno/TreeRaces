@@ -1,11 +1,42 @@
 #include "boundingbox.h"
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <cmath>
 #include <iostream>
+#include <utility>
 
 using std::array;
+using std::initializer_list;
+
+BoundingBox::BoundingBox(BoundingBox&& rhs) {
+  xhi = std::move(rhs.xhi);
+  xlo = std::move(rhs.xlo);
+  yhi = std::move(rhs.yhi);
+  ylo = std::move(rhs.ylo);
+  zhi = std::move(rhs.zhi);
+  zlo = std::move(rhs.zlo);
+}
+
+BoundingBox::BoundingBox(initializer_list<double> l) {
+  std::copy(l.begin(), l.end(), &xhi);
+}
+
+BoundingBox& BoundingBox::operator=(const BoundingBox& rhs) {
+  std::copy(&rhs.xhi, &rhs.xhi + 6, &xhi);
+  return *this;
+}
+
+BoundingBox& BoundingBox::operator=(BoundingBox&& rhs) {
+  xhi = std::move(rhs.xhi);
+  xlo = std::move(rhs.xlo);
+  yhi = std::move(rhs.yhi);
+  ylo = std::move(rhs.ylo);
+  zhi = std::move(rhs.zhi);
+  zlo = std::move(rhs.zlo);
+  return *this;
+}
 
 bool BoundingBox::contains(const BoundingBox& other) const {
   return xlo <= other.xlo && xhi >= other.xhi &&

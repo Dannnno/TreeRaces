@@ -1,10 +1,11 @@
-ifndef CXX
+# If we aren't doing CI
+ifndef TRAVIS 
     # Checking if either of these commands exists
     CLANG := $(shell clang++ --version)
     MINGW := $(shell mingw32-g++ --version)
 
     # Picking a compiler depending on what is available
-    ifdef CLANG:
+    ifdef CLANG
         CXX = clang++
     else
         ifdef MINGW
@@ -15,10 +16,32 @@ ifndef CXX
     endif
 endif
 
+CXX_FLAGS = -Wall -Werror -Wextra -pedantic -std=c++11
+TRAVIS ?= DEBUG
 
-CXX_FLAGS = -Wall -Werror -Wextra -pedantic -std=c++11 -O3
-CPP_FLAGS =
-LD_FLAGS = -lgtest
+ifdef TRAVIS
+    CXX_FLAGS += -g
+    ifeq ($(CXX), clang++)
+        CXX_FLAGS += -O1
+    else
+        CXX_FLAGS += -Og
+    endif
+else
+    CXX_FLAGS += -O3
+endif
+
+host = $(shell hostname)
+muddhosts = knuth shuffler shadowfax
+
+ifdef host
+    ifeq ($(host), $(filter $(host), $(muddhosts)))
+        GTEST_DIR = /cs/cs70/googletest/googletest
+        CPP_FLAGS += -isystem $(GTEST_DIR)/include -isystem $(GTEST_DIR)
+        LD_FLAGS += $(GTEST_DIR)/src/gtest-all.cc 
+    endif
+endif
+CPP_FLAGS +=
+LD_FLAGS ?= -lgtest
 
 ifeq ($(CXX), mingw32-g++)
     CPP_FLAGS += -D__NO_INLINE__ -DMINGW_COMPILER
@@ -32,7 +55,7 @@ ifneq ($(OS), Windows_NT)
     endif
 endif
 
-VALGRIND_CMD = valgrind --leak-check=full
+VALGRIND_CMD = valgrind --leak-check=full --error-exitcode=1
 
 HEADER_SUBJECTS = octree boundingbox
 SUBJECTS = boundingbox
