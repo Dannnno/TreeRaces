@@ -40,8 +40,13 @@ ifdef host
         LD_FLAGS += $(GTEST_DIR)/src/gtest-all.cc 
     endif
 endif
-CPP_FLAGS +=
+
 LD_FLAGS ?= -lgtest
+
+ifdef COVERAGE
+    CXX_FLAGS += -fprofile-arcs -ftest-coverage
+    LD_FLAGS += -lgcov
+endif
 
 ifeq ($(CXX), mingw32-g++)
     CPP_FLAGS += -D__NO_INLINE__ -DMINGW_COMPILER
@@ -59,7 +64,7 @@ VALGRIND_CMD = valgrind --leak-check=full --error-exitcode=1
 
 HEADER_SUBJECTS = octree boundingbox
 SUBJECTS = boundingbox
-CLEAN_EXTENSIONS = *.o *.gch
+CLEAN_EXTENSIONS = *.o *.gch *.gcda *.gcno
 
 all: all_tests
 
@@ -82,6 +87,13 @@ endif
 
 run_valgrind_tests: all_tests
 	$(VALGRIND_CMD) ./all_tests
+
+coverage:
+	find -name *.gcda ../
+	cp -R ../structures/* ./structures/
+	cp -R ../tests/* ./tests/
+	gcovr -rp .
+	gcovr -rpb .
 
 clean:
 	rm -rf $(CLEAN_EXTENSIONS) all_tests

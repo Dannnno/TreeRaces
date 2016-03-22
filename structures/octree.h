@@ -49,10 +49,7 @@ class Octree {
   void swap(tree_type& rhs);
 
   template <typename OutputIterator>
-  bool search(const Point& p, OutputIterator it) const;
-
-  template <typename OutputIterator>
-  bool search(const BoundingBox& box, OutputIterator it) const;
+  bool search(const BoundingBox& box, OutputIterator& it) const;
 
   tree_type& operator=(tree_type rhs);
 
@@ -90,10 +87,7 @@ class Octree {
     ~Node();
 
     template <typename OutputIterator>
-    bool search(const Point& p, OutputIterator it) const;
-
-    template <typename OutputIterator>
-    bool search(const BoundingBox& box, OutputIterator it) const;
+    bool search(const BoundingBox& box, OutputIterator& it) const;
 
    private:
     void* value_;
@@ -185,13 +179,7 @@ void OCTREE::swap(OCTREE::tree_type& rhs) {
 
 template <OCTREE_TEMPLATE>
 template <typename OutputIterator>
-bool OCTREE::search(const Point& p, OutputIterator it) const {
-  return head_->search(p, it);
-}
-
-template <OCTREE_TEMPLATE>
-template <typename OutputIterator>
-bool OCTREE::search(const BoundingBox& box, OutputIterator it) const {
+bool OCTREE::search(const BoundingBox& box, OutputIterator& it) const {
   return head_->search(box, it);
 }
 
@@ -220,10 +208,7 @@ size_t OCTREE::size() const {
 template <OCTREE_TEMPLATE>
 OCTREE::Node::Node(const std::vector<std::pair<InputIterator, Point>>& input_values)
   : Node(input_values, 
-         BoundingBox(
-            InnerIterator(input_values.begin()), 
-            InnerIterator(input_values.end())
-         ),
+         BoundingBox(InnerIterator(input_values.begin()), InnerIterator(input_values.end())),
          0) { }
 
 template <OCTREE_TEMPLATE>
@@ -260,42 +245,37 @@ OCTREE::Node::~Node() {
 
 template <OCTREE_TEMPLATE>
 template <typename OutputIterator>
-bool OCTREE::Node::search(const Point& p, OutputIterator it) const {
-  if (extrema_.contains(p)) {
-    if (tag_ == NodeContents::INTERNAL) {
-      unsigned index = getOctantIndex(p);
-      childNodeArray& children = *static_cast<childNodeArray*>(value_);
-      if (children[index] != nullptr) {
-        return children[index]->search(p, it);
-      }
-    } else if (tag_ == NodeContents::LEAF) {
-      LeafNodeValues& children = *static_cast<LeafNodeValues*>(value_);
-      for (size_t i = 0; i < children.size_; ++i) {
-        if (std::get<1>(children.values_[i]) == p) {
-          *it = std::get<0>(children.values_[i]);
-          return true;
-        }
-      }
-    } else if (tag_ == NodeContents::MAX_DEPTH_LEAF) {
-      maxItemNode& children = *static_cast<maxItemNode*>(value_);
-      for (auto item : children) {
-        if (std::get<1>(item) == p) {
-          *it = std::get<0>(item);
-          return true;
-        }
+bool OCTREE::Node::search(const BoundingBox& p, OutputIterator& it) const {
+  bool success = false;
+  if (tag_ == NodeContents::INTERNAL) {
+    childNodeArray& children = *static_cast<childNodeArray*>(value_);
+    for (auto child : children) {
+      if (child) {
+        success = child->search(p, it) || success;
       }
     }
-  } 
-  return false;
-}
-
-#define UNUSED(x) (void)(x)
-template <OCTREE_TEMPLATE>
-template <typename OutputIterator>
-bool OCTREE::Node::search(const BoundingBox& box, OutputIterator it) const {
-  UNUSED(box);
-  UNUSED(it);
-  return false;
+  } else if (tag_ == NodeContents::LEAF) {
+    LeafNodeValues& children = *static_cast<LeafNodeValues*>(value_);
+    for (size_t i = 0; i < children.size_; ++i) {
+      Point& point = std::get<1>(children.values_[i]);
+      if (p.contains(point)) {
+        *it = std::get<0>(children.values_[i]);
+        ++it;
+        success = true;
+      }
+    }
+  } else if (tag_ == NodeContents::MAX_DEPTH_LEAF) {
+    maxItemNode& children = *static_cast<maxItemNode*>(value_);
+    for (auto child : children) {
+      Point& point = std::get<1>(child);
+      if (p.contains(point)) {
+        *it = std::get<0>(child);
+        ++it;
+        success = true;
+      }
+    }
+  }
+  return success;
 }
 
 template <OCTREE_TEMPLATE>

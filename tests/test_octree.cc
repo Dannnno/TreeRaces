@@ -63,6 +63,7 @@ TEST(OctreeConstructor, DefaultConstructorMaxPerNodeLarge) {
     EXPECT_EQ(o.size(), 100);
 }
 
+#if 0
 TEST(OctreePointSearch, SearchNonExistantPoint) {   
     vector<ValuePoint<int>> data(100);
     for (double i = 0; i < 100; ++i) {
@@ -164,42 +165,38 @@ TEST(OctreeBoxSearch, SearchExternalBox) {
     EXPECT_FALSE(o.search(box, output));
 }
 
-// TEST(OctreeBoxSearch, SearchLeafNodeBox) {
-//     vector<ValuePoint<int>> data(100);
-//     for (double i = 0; i < 100; ++i) {
-//         data[i].dimensions_ = array<double, 3>{{ i, i+1, i+2 }};
-//         data[i].value_ = static_cast<int>(i);
-//     }
-//     BoundingBox box
-//     Octree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>> o(data.begin(), data.end());
-//     vector<vector<ValuePoint<int>>::iterator> output;
+#endif
 
-//     BoundingBox box{-10, -5, -10, -5, -10, -5};
-//     EXPECT_FALSE(o.search(box, output));
-// }
+TEST(OctreeBoxSearch, SearchNotPresent) {
+    vector<ValuePoint<int>> data(100);
+    for (double i = 0; i < 100; ++i) {
+        data[i].dimensions_ = array<double, 3>{{ i, i+1, i+2 }};
+        data[i].value_ = static_cast<int>(i);
+    }
+    Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+    vector<vector<ValuePoint<int>>::const_iterator> outputValues;
+    auto outputIterator = back_inserter(outputValues);
+    BoundingBox box{-10, -5, -10, -5, -10, -5};
+    EXPECT_FALSE(o.search(box, outputIterator));
+}
 
-// TEST(OctreeBoxSearch, SearchOverlappingNodeBox) {
-//     vector<ValuePoint<int>> data(100);
-//     for (double i = 0; i < 100; ++i) {
-//         data[i].dimensions_ = array<double, 3>{{ i, i+1, i+2 }};
-//         data[i].value_ = static_cast<int>(i);
-//     }
-//     Octree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>> o(data.begin(), data.end());
-//     vector<vector<ValuePoint<int>>::iterator> output;
+TEST(OctreeBoxSearch, SearchPresent) {
+    vector<ValuePoint<int>> data(100);
+    for (double i = 0; i < 100; ++i) {
+        data[i].dimensions_ = array<double, 3>{{ i, i+1, i+2 }};
+        data[i].value_ = static_cast<int>(i);
+    }
+    Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+    vector<vector<ValuePoint<int>>::const_iterator> outputValues;
+    auto outputIterator = back_inserter(outputValues);
+    BoundingBox box{10, 5, 10, 5, 10, 5};
 
-//     BoundingBox box{-10, -5, -10, -5, -10, -5};
-//     EXPECT_FALSE(o.search(box, output));
-// }
-
-// TEST(OctreeBoxSearch, SearchMaxDepthLeafNodeBox) {
-//     vector<ValuePoint<int>> data(100);
-//     for (double i = 0; i < 100; ++i) {
-//         data[i].dimensions_ = array<double, 3>{{ i, i+1, i+2 }};
-//         data[i].value_ = static_cast<int>(i);
-//     }
-//     Octree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>> o(data.begin(), data.end());
-//     vector<vector<ValuePoint<int>>::iterator> output;
-
-//     BoundingBox box{-10, -5, -10, -5, -10, -5};
-//     EXPECT_FALSE(o.search(box, output));
-// }
+    vector<vector<ValuePoint<int>>::const_iterator> expectedValues;
+    for (auto it = data.cbegin(); it != data.cend(); ++it) {
+        if (box.contains(ExamplePointExtractor<int>()(*it))) {
+            expectedValues.push_back(it);
+        }   
+    }
+    EXPECT_TRUE(o.search(box, outputIterator));
+    EXPECT_EQ(expectedValues, outputValues);
+}
