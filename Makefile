@@ -62,8 +62,8 @@ endif
 
 VALGRIND_CMD = valgrind --leak-check=full --error-exitcode=1
 
-HEADER_SUBJECTS = octree boundingbox
-SUBJECTS = boundingbox
+HEADER_SUBJECTS = boundingbox octree pointerless_octree point3d
+SUBJECTS = boundingbox point3d
 CLEAN_EXTENSIONS = *.o *.gch *.gcda *.gcno
 
 all: all_tests
