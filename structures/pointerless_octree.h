@@ -72,8 +72,11 @@ class PointerlessOctree {
   };
 
   struct Node {
+    Node() : type_(NodeContents::INTERNAL) {}
     template <typename OutputIterator>
     bool search(const BoundingBox& box, OutputIterator& it) const;
+
+    ~Node();
 
     std::size_t get_depth() const;
     std::size_t get_parent_key() const;
@@ -186,6 +189,20 @@ std::size_t POINTERLESSOCTREE::depth() const {
 
 //     template <typename OutputIterator>
 //     bool search(const BoundingBox& box, OutputIterator& it) const;
+
+template <POINTERLESS_OCTREE_TEMPLATE>
+POINTERLESSOCTREE::Node::~Node() {
+  switch (type_) {
+    case NodeContents::INTERNAL:
+      values_.internalValue_.~InternalNodeValue();
+      break;
+    case NodeContents::LEAF:
+      values_.leafValue_.~LeafNodeValue();
+      break;
+    default:
+      throw "Invalid node type";
+  }
+}
 
 
 #endif // defined POINTERLESS_OCTREE_CPU_H
