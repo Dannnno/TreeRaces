@@ -50,36 +50,53 @@ TEST_F(PointerlessOctreeTest, IteratorConstructorMaxPerNodeLarge) {
     EXPECT_EQ(o.size(), 100);
 }
 
-// TEST_F(OctreeBoxSearch, SearchNotPresent) {
-//     vector<ValuePoint<int>> data(100);
-//     for (double i = 0; i < 100; ++i) {
-//         data[i].dimensions_ = Point3d{ i, i+1, i+2 };
-//         data[i].value_ = static_cast<int>(i);
-//     }
-//     Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
-//     vector<vector<ValuePoint<int>>::const_iterator> outputValues;
-//     auto outputIterator = back_inserter(outputValues);
-//     BoundingBox box{{-5, -5, -5}, {-10, -10, -10}};
-//     EXPECT_FALSE(o.search(box, outputIterator));
-// }
+TEST_F(PointerlessOctreeTest, BoxSearchNotPresent) {
+    PointerlessOctree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+    vector<vector<ValuePoint<int>>::const_iterator> outputValues;
+    auto outputIterator = back_inserter(outputValues);
+    BoundingBox box{{-5, -5, -5}, {-10, -10, -10}};
+    EXPECT_FALSE(o.search(box, outputIterator));
+}
 
-// TEST_F(OctreeBoxSearch, SearchPresent) {
-//     vector<ValuePoint<int>> data(100);
-//     for (double i = 0; i < 100; ++i) {
-//         data[i].dimensions_ = Point3d{ i, i+1, i+2 };
-//         data[i].value_ = static_cast<int>(i);
-//     }
-//     Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
-//     vector<vector<ValuePoint<int>>::const_iterator> outputValues;
-//     auto outputIterator = back_inserter(outputValues);
-//     BoundingBox box{{5, 5, 5}, {10, 10, 10}};
+TEST_F(PointerlessOctreeTest, BoxSearchPresent) {
+    PointerlessOctree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+    vector<vector<ValuePoint<int>>::const_iterator> outputValues;
+    auto outputIterator = back_inserter(outputValues);
+    BoundingBox box{{5, 5, 5}, {10, 10, 10}};
 
-//     vector<vector<ValuePoint<int>>::const_iterator> expectedValues;
-//     for (auto it = data.cbegin(); it != data.cend(); ++it) {
-//         if (box.contains(ExamplePointExtractor<int>()(*it))) {
-//             expectedValues.push_back(it);
-//         }   
-//     }
-//     EXPECT_TRUE(o.search(box, outputIterator));
-//     EXPECT_EQ(expectedValues, outputValues);
-// }
+    vector<vector<ValuePoint<int>>::const_iterator> expectedValues;
+    for (auto it = data.cbegin(); it != data.cend(); ++it) {
+        if (box.contains(ExamplePointExtractor<int>()(*it))) {
+            expectedValues.push_back(it);
+        }   
+    }
+    EXPECT_TRUE(o.search(box, outputIterator));
+    EXPECT_EQ(expectedValues, outputValues);
+}
+
+TEST_F(PointerlessOctreeTest, BoxSearchAll) {
+    PointerlessOctree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+    vector<vector<ValuePoint<int>>::const_iterator> outputValues;
+    auto outputIterator = back_inserter(outputValues);
+
+    vector<vector<ValuePoint<int>>::const_iterator> expectedValues;
+    for (auto it = data.cbegin(); it != data.cend(); ++it) {
+        if (allBox.contains(ExamplePointExtractor<int>()(*it))) {
+            expectedValues.push_back(it);
+        }   
+    }
+
+    // Verify that all of the values are in the box
+    EXPECT_EQ(data.size(), expectedValues.size());
+
+    // Verify that something was found
+    EXPECT_TRUE(o.search(allBox, outputIterator));
+
+    // Verify that we got as many things out as we wanted to
+    EXPECT_EQ(outputValues.size(), expectedValues.size());
+
+    // Verify that each element is the same
+    for (size_t index = 0; index < std::min(expectedValues.size(), outputValues.size()); ++index) {
+        EXPECT_EQ(outputValues[index], expectedValues[index]) << "At index: " << index;
+    }
+}

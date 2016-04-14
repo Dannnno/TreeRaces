@@ -58,3 +58,30 @@ TEST_F(DefaultOctreeTest, BoxSearchPresent) {
     EXPECT_TRUE(o.search(box, outputIterator));
     EXPECT_EQ(expectedValues, outputValues);
 }
+
+TEST_F(OctreeTest, BoxSearchAll) {
+    Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+    vector<vector<ValuePoint<int>>::const_iterator> outputValues;
+    auto outputIterator = back_inserter(outputValues);
+
+    vector<vector<ValuePoint<int>>::const_iterator> expectedValues;
+    for (auto it = data.cbegin(); it != data.cend(); ++it) {
+        if (allBox.contains(ExamplePointExtractor<int>()(*it))) {
+            expectedValues.push_back(it);
+        }   
+    }
+    
+    // Verify that all of the values are in the box
+    EXPECT_EQ(data.size(), expectedValues.size());
+
+    // Verify that something was found
+    EXPECT_TRUE(o.search(allBox, outputIterator));
+
+    // Verify that we got as many things out as we wanted to
+    EXPECT_EQ(outputValues.size(), expectedValues.size());
+
+    // Verify that each element is the same
+    for (size_t index = 0; index < std::min(expectedValues.size(), outputValues.size()); ++index) {
+        EXPECT_EQ(outputValues[index], expectedValues[index]) << "At index: " << index;
+    }
+}

@@ -75,8 +75,9 @@ structures/%.o: structures/%.cc structures/%.h
 	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $< -c -o $@
 
 all_tests: $(patsubst %,test_%.o, $(HEADER_SUBJECTS)) \
-           $(patsubst %,structures/%.o, $(SUBJECTS)) run_tests.cc
-	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $^ -o $@ $(LD_FLAGS) 
+           $(patsubst %,structures/%.o, $(SUBJECTS)) run_tests.cc \
+           tests/test_helpers.h structures/inneriterator.h
+	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $(filter %.o %.cc,$^) -o $@ $(LD_FLAGS) 
 
 run_tests: all_tests
 ifeq ($(OS), Windows_NT)

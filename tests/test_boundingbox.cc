@@ -74,7 +74,7 @@ TEST(BoundingBox, ContainsPoint3dOnLowEdge) {
 TEST(BoundingBox, ContainsPoint3dOnHighEdge) {
 	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
 	Point3d p{10, 10, 10};
-	EXPECT_FALSE(first.contains(p));
+	EXPECT_TRUE(first.contains(p));
 }
 
 TEST(BoundingBox, OverlapOtherBoxEqual) {

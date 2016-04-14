@@ -14,9 +14,9 @@ bool BoundingBox::contains(const BoundingBox& other) const {
 }
 
 bool BoundingBox::contains(const Point3d& point) const {
-  return mins_.x <= point.x && point.x < maxes_.x &&
-         mins_.y <= point.y && point.y < maxes_.y &&
-         mins_.z <= point.z && point.z < maxes_.z;
+  return mins_.x <= point.x && point.x <= maxes_.x &&
+         mins_.y <= point.y && point.y <= maxes_.y &&
+         mins_.z <= point.z && point.z <= maxes_.z;
 }
 
 BoundingBox BoundingBox::overlap(const BoundingBox& other) const {

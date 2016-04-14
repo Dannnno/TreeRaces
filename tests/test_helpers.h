@@ -1,7 +1,15 @@
+// Stupid mingw port of gtest 
+#ifdef MINGW_COMPILER
+  #ifdef __STRICT_ANSI__
+  #undef __STRICT_ANSI__
+  #endif
+#endif
+
 #ifndef TEST_HELPERS_H_DEFINED
 #define TEST_HELPERS_H_DEFINED
 
 #include "../structures/point3d.h"
+#include "../structures/boundingbox.h"
 #include <vector>
 #include "gtest/gtest.h"
 
@@ -27,6 +35,7 @@ struct ExamplePointExtractor {
 class OctreeTest : public ::testing::Test {
   protected:
   	std::vector<ValuePoint<int>> data;
+    BoundingBox allBox;
 
   	OctreeTest() : data(std::vector<ValuePoint<int>>(100)) {}
 
@@ -36,7 +45,9 @@ class OctreeTest : public ::testing::Test {
 	    for (double i = 0; i < data.size(); ++i) {
 	        data[i].dimensions_ = Point3d{ i, i+1, i+2 };
 	        data[i].value_ = static_cast<int>(i);
+          allBox.maxes_.x = allBox.maxes_.y = allBox.maxes_.z = i + 2;
 	    }
+      allBox.mins_.x = allBox.mins_.y = allBox.mins_.z = 0;
   	}
 };
 
