@@ -60,9 +60,6 @@ class PointerlessOctree {
     NodeValues() : internalValue_() {}
     NodeValues(const LeafNodeValue& v) : leafValue_(v) {}
     NodeValues(const InternalNodeValue& v) : internalValue_(v) {}
-    NodeValues(const NodeValues& v) : NodeValues() {
-      memcpy(this, &v, sizeof(NodeValues));
-    }
     ~NodeValues() {}
 
     LeafNodeValue leafValue_;
@@ -76,6 +73,13 @@ class PointerlessOctree {
 
   struct Node {
     Node() : type_(NodeContents::INTERNAL) {}
+    Node(const Node& rhs) : extrema_(rhs.extrema_), key_(rhs.key_), type_(rhs.type_) {
+      if (type_ == NodeContents::INTERNAL) {
+        values_.internalValue_ = rhs.values_.internalValue_;
+      } else {
+        values_.leafValue_ = rhs.values_.leafValue_;
+      }
+    }
     ~Node();
 
     BoundingBox extrema_;
@@ -181,16 +185,16 @@ std::size_t POINTERLESSOCTREE::depth() const {
 
 template <POINTERLESS_OCTREE_TEMPLATE>
 POINTERLESSOCTREE::Node::~Node() {
-  // switch (type_) {
-  //   case NodeContents::INTERNAL:
-  //     values_.internalValue_.~InternalNodeValue();
-  //     break;
-  //   case NodeContents::LEAF:
-  //     values_.leafValue_.~LeafNodeValue();
-  //     break;
-  //   default:
-  //     throw "Invalid node type";
-  // }
+  switch (type_) {
+    case NodeContents::INTERNAL:
+      values_.internalValue_.~InternalNodeValue();
+      break;
+    case NodeContents::LEAF:
+      values_.leafValue_.~LeafNodeValue();
+      break;
+    default:
+      throw "Invalid node type";
+  }
 }
 
 template <POINTERLESS_OCTREE_TEMPLATE>
