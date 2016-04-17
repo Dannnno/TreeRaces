@@ -1,125 +1,102 @@
 #include "boundingbox.h"
 
-#include <algorithm>
-#include <array>
 #include <limits>
 #include <cmath>
 #include <iostream>
-#include <utility>
+#include <array>
 
 using std::array;
-using std::initializer_list;
-
-BoundingBox::BoundingBox(BoundingBox&& rhs) {
-  xhi = std::move(rhs.xhi);
-  xlo = std::move(rhs.xlo);
-  yhi = std::move(rhs.yhi);
-  ylo = std::move(rhs.ylo);
-  zhi = std::move(rhs.zhi);
-  zlo = std::move(rhs.zlo);
-}
-
-BoundingBox::BoundingBox(initializer_list<double> l) {
-  std::copy(l.begin(), l.end(), &xhi);
-}
-
-BoundingBox& BoundingBox::operator=(const BoundingBox& rhs) {
-  std::copy(&rhs.xhi, &rhs.xhi + 6, &xhi);
-  return *this;
-}
-
-BoundingBox& BoundingBox::operator=(BoundingBox&& rhs) {
-  xhi = std::move(rhs.xhi);
-  xlo = std::move(rhs.xlo);
-  yhi = std::move(rhs.yhi);
-  ylo = std::move(rhs.ylo);
-  zhi = std::move(rhs.zhi);
-  zlo = std::move(rhs.zlo);
-  return *this;
-}
 
 bool BoundingBox::contains(const BoundingBox& other) const {
-  return xlo <= other.xlo && xhi >= other.xhi &&
-         ylo <= other.ylo && yhi >= other.yhi &&
-         zlo <= other.zlo && zhi >= other.zhi;
+  return mins_.x <= other.mins_.x && maxes_.x >= other.maxes_.x &&
+         mins_.y <= other.mins_.y && maxes_.y >= other.maxes_.y &&
+         mins_.z <= other.mins_.z && maxes_.z >= other.maxes_.z;
 }
 
-bool BoundingBox::contains(const std::array<double, 3>& point) const {
-  return xlo <= point[0] && xhi > point[0] &&
-         ylo <= point[1] && yhi > point[1] &&
-         zlo <= point[2] && zhi > point[2];
+bool BoundingBox::contains(const Point3d& point) const {
+  return mins_.x <= point.x && point.x <= maxes_.x &&
+         mins_.y <= point.y && point.y <= maxes_.y &&
+         mins_.z <= point.z && point.z <= maxes_.z;
 }
 
-bool BoundingBox::overlap(const BoundingBox& other, BoundingBox* out) const {
+BoundingBox BoundingBox::overlap(const BoundingBox& other) const {
   // trivial cases
   if (contains(other)) {
-    *out = other;
-    return true;
+    return other;
   } else if (other.contains(*this)) {
-    *out = *this;
-    return true;
+    return *this;
   } 
 
   // Check if there is no intersection
-  if (xhi < other.xlo || xlo > other.xhi ||
-      yhi < other.ylo || ylo > other.yhi ||
-      zhi < other.zlo || zlo > other.zhi) {
-    *out = invalid;
-    return false;
+  if (maxes_.x < other.mins_.x || mins_.x > other.maxes_.x ||
+      maxes_.y < other.mins_.y || mins_.y > other.maxes_.y ||
+      maxes_.z < other.mins_.z || mins_.z > other.maxes_.z) {
+    return invalidBox;
   }
 
   // Actually calculate the bounds
-  double upperX = std::min(xhi, other.xhi);
-  double upperY = std::min(yhi, other.yhi);
-  double upperZ = std::min(zhi, other.zhi);
+  double upperX = std::min(maxes_.x, other.maxes_.x);
+  double upperY = std::min(maxes_.y, other.maxes_.y);
+  double upperZ = std::min(maxes_.z, other.maxes_.z);
 
-  double lowerX = std::max(xlo, other.xlo);
-  double lowerY = std::max(ylo, other.ylo);
-  double lowerZ = std::max(zlo, other.zlo);
+  double lowerX = std::max(mins_.x, other.mins_.x);
+  double lowerY = std::max(mins_.y, other.mins_.y);
+  double lowerZ = std::max(mins_.z, other.mins_.z);
 
-  *out = BoundingBox{upperX, lowerX, upperY, lowerY, upperZ, lowerZ};
-  return true;
+  return BoundingBox{
+    { lowerX, lowerY, lowerZ },
+    { upperX, upperY, upperZ }
+  };
 }
 
 array<BoundingBox, 8> BoundingBox::partition() const {
-  double xmid = (xhi - xlo) / 2.;
-  double ymid = (yhi - ylo) / 2.;
-  double zmid = (zhi - zlo) / 2.;
+  const double xmid = (maxes_.x - mins_.x) / 2.;
+  const double ymid = (maxes_.y - mins_.y) / 2.;
+  const double zmid = (maxes_.z - mins_.z) / 2.;
 
   std::array<BoundingBox, 8> ret{{
-    BoundingBox{xmid, xlo, ymid, ylo, zmid, zlo}, // bottom left front
-    BoundingBox{xhi, xmid, ymid, ylo, zmid, zlo}, // bottom right front
-    BoundingBox{xmid, xlo, yhi, ymid, zmid, zlo}, // bottom left back
-    BoundingBox{xhi, xmid, yhi, ymid, zmid, zlo}, // bottom right back
-    BoundingBox{xmid, xlo, ymid, ylo, zhi, zmid}, // top left front
-    BoundingBox{xhi, xmid, ymid, ylo, zhi, zmid}, // top right front
-    BoundingBox{xmid, xlo, yhi, ymid, zhi, zmid}, // top left back
-    BoundingBox{xhi, xmid, yhi, ymid, zhi, zmid}  // top right back
+    BoundingBox{{mins_.x, mins_.y, mins_.z}, {xmid, ymid, zmid}},   // bottom left front
+    BoundingBox{{xmid, mins_.y, mins_.z}, {maxes_.x, ymid, zmid}},  // bottom right front
+    BoundingBox{{mins_.x, ymid, mins_.z}, {xmid, maxes_.y, zmid}},  // bottom left back
+    BoundingBox{{xmid, ymid, mins_.z}, {maxes_.x, maxes_.y, zmid}}, // bottom right back
+    BoundingBox{{mins_.x, mins_.y, zmid}, {xmid, ymid, maxes_.z}},  // top left front
+    BoundingBox{{xmid, mins_.y, zmid}, {maxes_.x, ymid, maxes_.z}}, // top right front
+    BoundingBox{{mins_.x, ymid, zmid}, {xmid, maxes_.y, maxes_.z}}, // top left back
+    BoundingBox{{xmid, ymid, zmid}, {maxes_.x, maxes_.y, maxes_.z}} // top right back
   }};
   return ret;
 }
 
 bool BoundingBox::operator==(const BoundingBox& rhs) const {
-  // They're all equal, or they're all NaNs
-  return (xhi == rhs.xhi && xlo == rhs.xlo &&
-          yhi == rhs.yhi && ylo == rhs.ylo &&
-          zhi == rhs.zhi && zlo == rhs.zlo) ||
-         (std::isnan(xhi) && std::isnan(rhs.xhi) &&
-          std::isnan(xlo) && std::isnan(rhs.xlo) &&
-          std::isnan(yhi) && std::isnan(rhs.yhi) &&
-          std::isnan(ylo) && std::isnan(rhs.ylo) &&
-          std::isnan(zhi) && std::isnan(rhs.zhi) &&
-          std::isnan(zlo) && std::isnan(rhs.zlo));
+  bool allEqual = rhs.mins_ == mins_ && rhs.maxes_ == maxes_;
+  if (allEqual) return true;
+
+  bool allNaN = rhs.maxes_.isNaN() && rhs.mins_.isNaN() && 
+                maxes_.isNaN() && mins_.isNaN();
+  if (allNaN) return true;
+
+  return false;
 }
 
 bool BoundingBox::operator!=(const BoundingBox& rhs) const {
   return !operator==(rhs);
 }
 
-std::ostream& operator<<(std::ostream& stream, const BoundingBox& rhs) {
-  stream << "{" << rhs.xhi << ", " << rhs.xlo << ", "
-                << rhs.yhi << ", " << rhs.ylo << ", "
-                << rhs.zhi << ", " << rhs.zlo << ", "
-         << "}";
-  return stream;
+std::ostream& operator<<(std::ostream& out, const BoundingBox& rhs) {
+  out << "{ " << rhs.mins_ << ", " << rhs.maxes_ << " }";
+  return out;
+}
+
+
+std::size_t BoundingBox::getChildPartitionIndex(const Point3d& p) const {
+  // children are ordered left to right, front to back, bottom to top.
+
+  double xmid = (maxes_.x - mins_.x) / 2.;
+  double ymid = (maxes_.y - mins_.y) / 2.;
+  double zmid = (maxes_.z - mins_.z) / 2.;
+  bool left = p.x < xmid && p.x >= mins_.x;
+  bool front = p.y < ymid && p.y >= mins_.y;
+  bool bottom = p.z < zmid && p.z >= mins_.z;
+
+  return (!bottom << 2) | (!left << 1) | !front;
 }

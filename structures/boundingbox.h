@@ -2,77 +2,54 @@
 #define BOUNDINGBOX_H
 
 #include <array>
+#include <cstddef>
 #include <limits>
 #include <cmath>
 #include <iostream>
 
-// An axis aligned bounding boxed (AABB)
+#include "point3d.h"
+
+using limits = std::numeric_limits<double>;
+
 struct BoundingBox {
-  BoundingBox() = default;
-  template <typename InputIterator>
-  BoundingBox(InputIterator begin, InputIterator end);
-  BoundingBox(std::initializer_list<double> l);
-  BoundingBox(BoundingBox&& rhs);
-  BoundingBox(const BoundingBox&) = default;
-
-  BoundingBox& operator=(BoundingBox&) = default;
-  BoundingBox& operator=(BoundingBox&& rhs);
-  BoundingBox& operator=(const BoundingBox& rhs);
-
-  ~BoundingBox() = default;
-
   bool contains(const BoundingBox& other) const;
-  bool contains(const std::array<double, 3>& point) const;
+  bool contains(const Point3d& p) const;
 
-  bool overlap(const BoundingBox& other, BoundingBox* out) const;
-
+  BoundingBox overlap(const BoundingBox& other) const;
   std::array<BoundingBox, 8> partition() const;
 
   bool operator==(const BoundingBox& rhs) const;
-
   bool operator!=(const BoundingBox& rhs) const;
 
-  friend
-  std::ostream& operator<<(std::ostream& stream, const BoundingBox& rhs);
+  std::size_t getChildPartitionIndex(const Point3d& p) const;
 
-  double xhi, xlo, yhi, ylo, zhi, zlo;
+  Point3d mins_, maxes_;
 };
 
-const BoundingBox initial = BoundingBox{
-    std::numeric_limits<double>::min(), std::numeric_limits<double>::max(),
-    std::numeric_limits<double>::min(), std::numeric_limits<double>::max(),
-    std::numeric_limits<double>::min(), std::numeric_limits<double>::max()
+static const BoundingBox initialBox = {
+  { limits::max(), limits::max(), limits::max() },
+  { limits::min(), limits::min(), limits::min() }
 };
 
-const BoundingBox invalid = BoundingBox{
-    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), 
-    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), 
-    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()
+static const BoundingBox invalidBox = {
+  { limits::quiet_NaN(), limits::quiet_NaN(), limits::quiet_NaN() },
+  { limits::quiet_NaN(), limits::quiet_NaN(), limits::quiet_NaN() }
 };
 
 template <typename InputIterator>
-BoundingBox::BoundingBox(InputIterator begin, InputIterator end) : BoundingBox(initial) {
-  for (; begin != end; ++begin) {
-    const std::array<double, 3>& point = *begin;
+BoundingBox makeBoundingBox(InputIterator begin, InputIterator end) {
+  BoundingBox returnBox = initialBox;
 
-    if (point[0] < xlo) {
-      xlo = point[0];
-    } else if (point[0] > xhi) {
-      xhi = point[0];
-    }
-
-    if (point[1] < ylo) {
-      ylo = point[1];
-    } else if (point[1] > yhi) {
-      yhi = point[1];
-    }
-
-    if (point[2] < zlo) {
-      zlo = point[2];
-    } else if (point[2] > zhi) {
-      zhi = point[2];
-    }
+  for (auto it = begin; it != end; ++it) {
+    returnBox.mins_.x = std::min(it->x, returnBox.mins_.x);
+    returnBox.mins_.y = std::min(it->y, returnBox.mins_.y);
+    returnBox.mins_.z = std::min(it->z, returnBox.mins_.z);
+    returnBox.maxes_.x = std::max(it->x, returnBox.maxes_.x);
+    returnBox.maxes_.y = std::max(it->y, returnBox.maxes_.y);
+    returnBox.maxes_.z = std::max(it->z, returnBox.maxes_.z);
   }
+
+  return returnBox;
 }
 
 #endif // defined BOUNDINGBOX_H
