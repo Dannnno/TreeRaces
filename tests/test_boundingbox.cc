@@ -5,6 +5,7 @@
 	#endif
 #endif
 
+#include "../structures/point3d.h"
 #include "../structures/boundingbox.h"
 
 #include "gtest/gtest.h"
@@ -14,116 +15,107 @@
 using std::array;
 using std::vector;
 
-using Point = array<double, 3>;
-
-TEST(BoundingBoxConstructors, Iterators) {
-	vector<Point> points;
-	points.push_back({{0,0,0}});
-	points.push_back({{10,10,10}});
-	BoundingBox first(points.begin(), points.end());
-	BoundingBox second{10, 0, 10, 0, 10, 0};
+TEST(BoundingBox, FromIterators) {
+	vector<Point3d> points;
+	points.push_back(Point3d{0,0,0});
+	points.push_back(Point3d{10,10,10});
+	BoundingBox first = makeBoundingBox(points.begin(), points.end());
+	BoundingBox second{{0, 0, 0}, {10, 10, 10}};
 	EXPECT_EQ(first, second);
 }
 
 TEST(BoundingBox, ContainsOtherBoxEqual) {
 	BoundingBox first, second;
-	first = BoundingBox{10, 0, 10, 0, 10, 0};
+	first = BoundingBox{{10, 10, 10}, {0, 0, 0}};
 	second = first;
 	EXPECT_TRUE(first.contains(second));
 	EXPECT_TRUE(second.contains(first));
 }
 
 TEST(BoundingBox, ContainsOtherBoxOutside) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	BoundingBox second{20, 10, 20, 10, 20, 10};
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	BoundingBox second{{10, 10, 10}, {20, 20, 20}};
 	EXPECT_FALSE(first.contains(second));
 	EXPECT_FALSE(second.contains(first));
 }
 
 TEST(BoundingBox, ContainsOtherBoxInside) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	BoundingBox second{5, 2, 5, 2, 5, 2};
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	BoundingBox second{{2, 2, 2}, {5, 5, 5}};
 	EXPECT_TRUE(first.contains(second));
 	EXPECT_FALSE(second.contains(first));
 }
 
 TEST(BoundingBox, ContaintsOtherBoxOverlap) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	BoundingBox second{11, 1, 10, 0, 10, 0};
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	BoundingBox second{{1, 0, 0}, {11, 10, 10}};
 	EXPECT_FALSE(first.contains(second));
 	EXPECT_FALSE(second.contains(first));
 }
 
-TEST(BoundingBox, ContainsPointInside) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	Point p{{1, 2, 3}};
+TEST(BoundingBox, ContainsPoint3dInside) {
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	Point3d p{1, 2, 3};
 	EXPECT_TRUE(first.contains(p));
 }
 
-TEST(BoundingBox, ContainsPointOutside) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	Point p{{11, 2, 3}};
+TEST(BoundingBox, ContainsPoint3dOutside) {
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	Point3d p{11, 2, 3};
 	EXPECT_FALSE(first.contains(p));
 }
 
-TEST(BoundingBox, ContainsPointOnLowEdge) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	Point p{{0, 0, 0}};
+TEST(BoundingBox, ContainsPoint3dOnLowEdge) {
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	Point3d p{0, 0, 0};
 	EXPECT_TRUE(first.contains(p));
 }
 
-TEST(BoundingBox, ContainsPointOnHighEdge) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	Point p{{10, 10, 10}};
-	EXPECT_FALSE(first.contains(p));
+TEST(BoundingBox, ContainsPoint3dOnHighEdge) {
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	Point3d p{10, 10, 10};
+	EXPECT_TRUE(first.contains(p));
 }
 
 TEST(BoundingBox, OverlapOtherBoxEqual) {
-	BoundingBox first, second, out;
-	first = BoundingBox{10, 0, 10, 0, 10, 0};
+	BoundingBox first, second;
+	first = BoundingBox{{0, 0, 0}, {10, 10, 10}};
 	second = first;
-	EXPECT_TRUE(first.overlap(second, &out));
-	EXPECT_EQ(first, out);
+	EXPECT_EQ(first.overlap(second), first);
 }
 
 TEST(BoundingBox, OverlapOtherBoxOutside) {
-	BoundingBox first{9, 0, 9, 0, 9, 9};
-	BoundingBox second{20, 10, 20, 10, 20, 10};
-	BoundingBox out;
-	EXPECT_FALSE(first.overlap(second, &out));
-	EXPECT_EQ(out, invalid);
+	BoundingBox first{{0, 0, 9}, {9, 9, 9}};
+	BoundingBox second{{10, 10, 10}, {20, 20, 20}};
+	EXPECT_EQ(invalidBox, first.overlap(second));
 }
 
 TEST(BoundingBox, OverlapOtherBoxInside) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	BoundingBox second{5, 2, 5, 2, 5, 2};
-	BoundingBox out1, out2;
-	EXPECT_TRUE(first.overlap(second, &out1));
-	EXPECT_TRUE(second.overlap(first, &out2));
-	EXPECT_EQ(out1, out2);
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	BoundingBox second{{2, 2, 2}, {5, 5, 5}};
+	EXPECT_EQ(first.overlap(second), second.overlap(first));
+	EXPECT_EQ(first.overlap(second), second);
 }
 
 TEST(BoundingBox, OverlapPartial) {
-	BoundingBox first{10, 0, 10, 0, 10, 0};
-	BoundingBox second{11, 1, 10, 0, 10, 0};
-	BoundingBox out;
-	BoundingBox expected{10, 1, 10, 0, 10, 0};
-	EXPECT_TRUE(first.overlap(second, &out));
-	EXPECT_EQ(out, expected);
+	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
+	BoundingBox second{{1, 0, 0}, {11, 10, 10}};
+	BoundingBox expected{{1, 0, 0}, {10, 10, 10}};
+	EXPECT_EQ(expected, first.overlap(second));
 }
 
 TEST(BoundingBox, Partition) {
-	BoundingBox extrema{100, 0, 100, 0, 100, 0};
+	BoundingBox extrema{{0, 0, 0}, {100, 100, 100}};
 	array<BoundingBox, 8> partitions = extrema.partition();
 	array<BoundingBox, 8> expectedPartitions{{
-		BoundingBox{50, 0, 50, 0, 50, 0},
-		BoundingBox{100, 50, 50, 0, 50, 0},
-		BoundingBox{50, 0, 100, 50, 50, 0},
-		BoundingBox{100, 50, 100, 50, 50, 0},
-		BoundingBox{50, 0, 50, 0, 100, 50},
-		BoundingBox{100, 50, 50, 0, 100, 50},
-		BoundingBox{50, 0, 100, 50, 100, 50},
-		BoundingBox{100, 50, 100, 50, 100, 50}
+		BoundingBox{{0, 0, 0}, {50, 50, 50}},
+		BoundingBox{{50, 0, 0}, {100, 50, 50}},
+		BoundingBox{{0, 50, 0}, {50, 100, 50}},
+		BoundingBox{{50, 50, 0}, {100, 100, 50}},
+		BoundingBox{{0, 0, 50}, {50, 50, 100}},
+		BoundingBox{{50, 0, 50}, {100, 50, 100}},
+		BoundingBox{{0, 50, 50}, {50, 100, 100}},
+		BoundingBox{{50, 50, 50}, {100, 100, 100}}
 	}};
 	for (unsigned i = 0; i < 8; ++i) {
 		EXPECT_EQ(partitions[i], expectedPartitions[i]);

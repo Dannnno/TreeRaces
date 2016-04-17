@@ -7,7 +7,7 @@
 
 #include "../structures/point3d.h"
 #include "../structures/boundingbox.h"
-#include "../structures/octree.h"
+#include "../structures/pointerless_octree.h"
 #include "test_helpers.h"
 
 #include <vector>
@@ -17,34 +17,49 @@
 using std::vector;
 using std::array;
 
+class PointerlessOctreeTest : public OctreeTest {};
 
-class DefaultOctreeTest : public OctreeTest {};
+TEST_F(PointerlessOctreeTest, DefaultConstructor) {
+    PointerlessOctree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>> o;
+    EXPECT_EQ(o.size(), 0);
+}
 
-TEST_F(DefaultOctreeTest, DefaultConstructor) {
-    Octree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>> o(data.begin(), data.end());
+TEST_F(PointerlessOctreeTest, DefaultConstructorMaxDepthSmall) {
+    PointerlessOctree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>, 16, 3> o;
+    EXPECT_EQ(o.size(), 0);
+}
+
+TEST_F(PointerlessOctreeTest, DefaultConstructorMaxPerNodeLarge) {
+    PointerlessOctree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>, 100> o;
+    EXPECT_EQ(o.size(), 0);
+}
+
+
+TEST_F(PointerlessOctreeTest, IteratorConstructor) {
+    PointerlessOctree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>> o(data.begin(), data.end());
     EXPECT_EQ(o.size(), 100);
 }
 
-TEST_F(DefaultOctreeTest, DefaultConstructorMaxDepthSmall) {
-    Octree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>, 16, 3> o(data.begin(), data.end());
+TEST_F(PointerlessOctreeTest, IteratorConstructorMaxDepthSmall) {
+    PointerlessOctree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>, 16, 3> o(data.begin(), data.end());
     EXPECT_EQ(o.size(), 100);
 }
 
-TEST_F(DefaultOctreeTest, DefaultConstructorMaxPerNodeLarge) {
-    Octree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>, 100> o(data.begin(), data.end());
+TEST_F(PointerlessOctreeTest, IteratorConstructorMaxPerNodeLarge) {
+    PointerlessOctree<std::vector<ValuePoint<int>>::iterator, ExamplePointExtractor<int>, 100> o(data.begin(), data.end());
     EXPECT_EQ(o.size(), 100);
 }
 
-TEST_F(DefaultOctreeTest, BoxSearchNotPresent) {
-    Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+TEST_F(PointerlessOctreeTest, BoxSearchNotPresent) {
+    PointerlessOctree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
     vector<vector<ValuePoint<int>>::const_iterator> outputValues;
     auto outputIterator = back_inserter(outputValues);
     BoundingBox box{{-5, -5, -5}, {-10, -10, -10}};
     EXPECT_FALSE(o.search(box, outputIterator));
 }
 
-TEST_F(DefaultOctreeTest, BoxSearchPresent) {
-    Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+TEST_F(PointerlessOctreeTest, BoxSearchPresent) {
+    PointerlessOctree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
     vector<vector<ValuePoint<int>>::const_iterator> outputValues;
     auto outputIterator = back_inserter(outputValues);
     BoundingBox box{{5, 5, 5}, {10, 10, 10}};
@@ -59,8 +74,8 @@ TEST_F(DefaultOctreeTest, BoxSearchPresent) {
     EXPECT_EQ(expectedValues, outputValues);
 }
 
-TEST_F(OctreeTest, BoxSearchAll) {
-    Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
+TEST_F(PointerlessOctreeTest, BoxSearchAll) {
+    PointerlessOctree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
     vector<vector<ValuePoint<int>>::const_iterator> outputValues;
     auto outputIterator = back_inserter(outputValues);
 
@@ -70,7 +85,7 @@ TEST_F(OctreeTest, BoxSearchAll) {
             expectedValues.push_back(it);
         }   
     }
-    
+
     // Verify that all of the values are in the box
     EXPECT_EQ(data.size(), expectedValues.size());
 
