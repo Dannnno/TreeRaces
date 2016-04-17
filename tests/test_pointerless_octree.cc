@@ -5,9 +5,9 @@
     #endif
 #endif
 
-#include "../structures/point3d.h"
-#include "../structures/boundingbox.h"
-#include "../structures/pointerless_octree.h"
+#include "tr/point3d.h"
+#include "tr/boundingbox.h"
+#include "tr/pointerless_octree.h"
 #include "test_helpers.h"
 
 #include <vector>
@@ -16,6 +16,10 @@
 
 using std::vector;
 using std::array;
+
+using tr::Point3d;
+using tr::BoundingBox;
+using tr::PointerlessOctree;
 
 class PointerlessOctreeTest : public OctreeTest {};
 

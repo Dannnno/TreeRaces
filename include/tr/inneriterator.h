@@ -6,18 +6,20 @@
 
 #include "point3d.h"
 
+namespace tr {
+
 template <typename InputIterator>
 struct InnerIterator {
-  using wrapped_type = typename std::vector<std::pair<InputIterator, Point3d>>::const_iterator;
+  using wrapped_type = typename std::vector<std::pair<InputIterator, tr::Point3d>>::const_iterator;
   wrapped_type it_;
 
   InnerIterator(wrapped_type it) : it_(it) {}
 
-  const Point3d& operator*() const {
+  const tr::Point3d& operator*() const {
     return std::get<1>(*it_);
   }
 
-  const Point3d* operator->() const {
+  const tr::Point3d* operator->() const {
     return &std::get<1>(*it_);
   } 
 
@@ -40,5 +42,7 @@ struct InnerIterator {
     return !operator==(rhs);
   }
 };
+
+}
 
 #endif // defined INNER_ITERATOR_H_DEFINED

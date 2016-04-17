@@ -5,9 +5,9 @@
     #endif
 #endif
 
-#include "../structures/point3d.h"
-#include "../structures/boundingbox.h"
-#include "../structures/octree.h"
+#include "tr/point3d.h"
+#include "tr/boundingbox.h"
+#include "tr/octree.h"
 #include "test_helpers.h"
 
 #include <vector>
@@ -17,6 +17,9 @@
 using std::vector;
 using std::array;
 
+using tr::Point3d;
+using tr::BoundingBox;
+using tr::Octree;
 
 class DefaultOctreeTest : public OctreeTest {};
 
@@ -59,7 +62,7 @@ TEST_F(DefaultOctreeTest, BoxSearchPresent) {
     EXPECT_EQ(expectedValues, outputValues);
 }
 
-TEST_F(OctreeTest, BoxSearchAll) {
+TEST_F(DefaultOctreeTest, BoxSearchAll) {
     Octree<vector<ValuePoint<int>>::const_iterator, ExamplePointExtractor<int>> o(data.cbegin(), data.cend());
     vector<vector<ValuePoint<int>>::const_iterator> outputValues;
     auto outputIterator = back_inserter(outputValues);

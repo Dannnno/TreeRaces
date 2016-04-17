@@ -16,7 +16,9 @@ ifndef TRAVIS
     endif
 endif
 
-CXX_FLAGS = -Wall -Werror -Wextra -pedantic -std=c++11
+INC = -Iinclude -Itests/include
+
+CXX_FLAGS = -Wall -Werror -Wextra -pedantic -std=c++11 $(INC)
 TRAVIS ?= DEBUG
 
 ifdef TRAVIS
@@ -68,15 +70,15 @@ CLEAN_EXTENSIONS = *.o *.gch *.gcda *.gcno
 
 all: all_tests
 
-test_%.o: tests/test_%.cc structures/%.h
-	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $< -c
-
-structures/%.o: structures/%.cc structures/%.h
+tests/test_%.o: tests/test_%.cc include/tr/%.h
 	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $< -c -o $@
 
-all_tests: $(patsubst %,test_%.o, $(HEADER_SUBJECTS)) \
-           $(patsubst %,structures/%.o, $(SUBJECTS)) run_tests.cc \
-           tests/test_helpers.h structures/inneriterator.h
+src/tr/%.o: src/tr/%.cc include/tr/%.h
+	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $< -c -o $@
+
+all_tests: $(patsubst %,tests/test_%.o, $(HEADER_SUBJECTS)) \
+           $(patsubst %,src/tr/%.o, $(SUBJECTS)) tests/run_tests.cc \
+           tests/include/test_helpers.h include/tr/inneriterator.h
 	$(CXX) $(CXX_FLAGS) $(CPP_FLAGS) $(filter %.o %.cc,$^) -o $@ $(LD_FLAGS) 
 
 run_tests: all_tests

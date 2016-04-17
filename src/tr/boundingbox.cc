@@ -1,4 +1,4 @@
-#include "boundingbox.h"
+#include "tr/boundingbox.h"
 
 #include <limits>
 #include <cmath>
@@ -7,26 +7,21 @@
 
 using std::array;
 
+namespace tr {
+
 bool BoundingBox::contains(const BoundingBox& other) const {
   return mins_.x <= other.mins_.x && maxes_.x >= other.maxes_.x &&
          mins_.y <= other.mins_.y && maxes_.y >= other.maxes_.y &&
          mins_.z <= other.mins_.z && maxes_.z >= other.maxes_.z;
 }
 
-bool BoundingBox::contains(const Point3d& point) const {
+bool BoundingBox::contains(const tr::Point3d& point) const {
   return mins_.x <= point.x && point.x <= maxes_.x &&
          mins_.y <= point.y && point.y <= maxes_.y &&
          mins_.z <= point.z && point.z <= maxes_.z;
 }
 
 BoundingBox BoundingBox::overlap(const BoundingBox& other) const {
-  // trivial cases
-  if (contains(other)) {
-    return other;
-  } else if (other.contains(*this)) {
-    return *this;
-  } 
-
   // Check if there is no intersection
   if (maxes_.x < other.mins_.x || mins_.x > other.maxes_.x ||
       maxes_.y < other.mins_.y || mins_.y > other.maxes_.y ||
@@ -88,7 +83,7 @@ std::ostream& operator<<(std::ostream& out, const BoundingBox& rhs) {
 }
 
 
-std::size_t BoundingBox::getChildPartitionIndex(const Point3d& p) const {
+std::size_t BoundingBox::getChildPartitionIndex(const tr::Point3d& p) const {
   // children are ordered left to right, front to back, bottom to top.
 
   double xmid = (maxes_.x - mins_.x) / 2.;
@@ -99,4 +94,6 @@ std::size_t BoundingBox::getChildPartitionIndex(const Point3d& p) const {
   bool bottom = p.z < zmid && p.z >= mins_.z;
 
   return (!bottom << 2) | (!left << 1) | !front;
+}
+
 }

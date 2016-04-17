@@ -5,12 +5,14 @@
 	#endif
 #endif
 
+#include "tr/point3d.h"
+
 #include <limits>
 #include <iostream>
 
 #include "gtest/gtest.h"
-#include "../structures/point3d.h"
 
+using tr::Point3d;
 
 TEST(Point3dComparisons, EqualityEqual) {
 	Point3d p1{1, 2, 3};
@@ -23,7 +25,9 @@ TEST(Point3dComparisons, EqualityEqualNaN) {
 	Point3d p1{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
 	Point3d p2{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
 
-	EXPECT_EQ(p1, p2) << "Comparing " << p1 << "with " << p2 << std::endl;
+	EXPECT_NE(p1, p2) << "Comparing " << p1 << "with " << p2 << std::endl;
+	EXPECT_TRUE(p1.isNaN() && p2.isNaN());
+	EXPECT_EQ(p1.isNaN(), p2.isNaN());
 }
 
 TEST(Point3dComparisons, EqualityInEqual) {
