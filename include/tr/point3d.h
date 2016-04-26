@@ -3,15 +3,20 @@
 
 #include <iostream>
 
+namespace tr {
+
 struct Point3d {
   double x, y, z;
 
   bool isNaN() const;
+  bool hasNaN() const;
 
   bool operator==(const Point3d& other) const;
   bool operator!=(const Point3d& other) const;
 };
 
 std::ostream& operator<<(std::ostream& out, const Point3d& rhs);
+
+}
 
 #endif // defined POINT3D_H_

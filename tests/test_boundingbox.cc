@@ -5,8 +5,8 @@
 	#endif
 #endif
 
-#include "../structures/point3d.h"
-#include "../structures/boundingbox.h"
+#include "tr/point3d.h"
+#include "tr/boundingbox.h"
 
 #include "gtest/gtest.h"
 #include <array>
@@ -14,6 +14,9 @@
 
 using std::array;
 using std::vector;
+
+using tr::BoundingBox;
+using tr::Point3d;
 
 TEST(BoundingBox, FromIterators) {
 	vector<Point3d> points;
@@ -46,7 +49,7 @@ TEST(BoundingBox, ContainsOtherBoxInside) {
 	EXPECT_FALSE(second.contains(first));
 }
 
-TEST(BoundingBox, ContaintsOtherBoxOverlap) {
+TEST(BoundingBox, ContainsOtherBoxOverlap) {
 	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
 	BoundingBox second{{1, 0, 0}, {11, 10, 10}};
 	EXPECT_FALSE(first.contains(second));
@@ -81,20 +84,27 @@ TEST(BoundingBox, OverlapOtherBoxEqual) {
 	BoundingBox first, second;
 	first = BoundingBox{{0, 0, 0}, {10, 10, 10}};
 	second = first;
+	EXPECT_EQ(first, second);
 	EXPECT_EQ(first.overlap(second), first);
+	EXPECT_EQ(second.overlap(first), second);
+	EXPECT_EQ(first.overlap(second), second.overlap(first));
+	EXPECT_NE(first.overlap(second), tr::invalidBox);
 }
 
 TEST(BoundingBox, OverlapOtherBoxOutside) {
 	BoundingBox first{{0, 0, 9}, {9, 9, 9}};
 	BoundingBox second{{10, 10, 10}, {20, 20, 20}};
-	EXPECT_EQ(invalidBox, first.overlap(second));
+	EXPECT_EQ(tr::invalidBox, first.overlap(second));
+	EXPECT_EQ(tr::invalidBox, second.overlap(first));
+	EXPECT_EQ(first.overlap(second), second.overlap(first));
 }
 
 TEST(BoundingBox, OverlapOtherBoxInside) {
 	BoundingBox first{{0, 0, 0}, {10, 10, 10}};
 	BoundingBox second{{2, 2, 2}, {5, 5, 5}};
-	EXPECT_EQ(first.overlap(second), second.overlap(first));
 	EXPECT_EQ(first.overlap(second), second);
+	EXPECT_EQ(first.overlap(second), second.overlap(first));
+	EXPECT_NE(first.overlap(second), tr::invalidBox);
 }
 
 TEST(BoundingBox, OverlapPartial) {
@@ -102,6 +112,9 @@ TEST(BoundingBox, OverlapPartial) {
 	BoundingBox second{{1, 0, 0}, {11, 10, 10}};
 	BoundingBox expected{{1, 0, 0}, {10, 10, 10}};
 	EXPECT_EQ(expected, first.overlap(second));
+	EXPECT_EQ(expected, second.overlap(first));
+	EXPECT_EQ(first.overlap(second), second.overlap(first));
+	EXPECT_NE(first.overlap(second), tr::invalidBox);
 }
 
 TEST(BoundingBox, Partition) {

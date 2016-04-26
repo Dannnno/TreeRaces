@@ -9,11 +9,13 @@
 
 #include "point3d.h"
 
+namespace tr {
+
 using limits = std::numeric_limits<double>;
 
 struct BoundingBox {
   bool contains(const BoundingBox& other) const;
-  bool contains(const Point3d& p) const;
+  bool contains(const tr::Point3d& p) const;
 
   BoundingBox overlap(const BoundingBox& other) const;
   std::array<BoundingBox, 8> partition() const;
@@ -21,10 +23,12 @@ struct BoundingBox {
   bool operator==(const BoundingBox& rhs) const;
   bool operator!=(const BoundingBox& rhs) const;
 
-  std::size_t getChildPartitionIndex(const Point3d& p) const;
+  std::size_t getChildPartitionIndex(const tr::Point3d& p) const;
 
-  Point3d mins_, maxes_;
+  tr::Point3d mins_, maxes_;
 };
+
+std::ostream& operator<<(std::ostream& out, const BoundingBox& rhs);
 
 static const BoundingBox initialBox = {
   { limits::max(), limits::max(), limits::max() },
@@ -51,5 +55,5 @@ BoundingBox makeBoundingBox(InputIterator begin, InputIterator end) {
 
   return returnBox;
 }
-
+}
 #endif // defined BOUNDINGBOX_H

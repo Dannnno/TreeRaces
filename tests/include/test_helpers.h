@@ -8,10 +8,13 @@
 #ifndef TEST_HELPERS_H_DEFINED
 #define TEST_HELPERS_H_DEFINED
 
-#include "../structures/point3d.h"
-#include "../structures/boundingbox.h"
+#include "tr/point3d.h"
+#include "tr/boundingbox.h"
 #include <vector>
 #include "gtest/gtest.h"
+
+using tr::Point3d;
+using tr::BoundingBox;
 
 template <typename T>
 struct ValuePoint {

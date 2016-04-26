@@ -12,12 +12,15 @@
 #include <bitset>
 #include <algorithm>
 
-template <typename InputIterator, typename PointExtractor, std::size_t max_node_size = 16, std::size_t max_depth = 100>
+namespace tr {
+
+template <typename InputIterator, typename PointExtractor, std::size_t max_node_size = 16, std::size_t max_depth = 20>
 class PointerlessOctree {
+  static_assert(max_depth <= 20, "Doesn't support a depth greater than 20");
  public:
   using tree_type = PointerlessOctree<InputIterator, PointExtractor, max_node_size, max_depth>;
   // Use 3 bits for each successive level, and 1 for the root
-  using index_type = std::bitset<max_depth * 3 + 1>;
+  using index_type = std::size_t;
 
   PointerlessOctree();
 
@@ -32,10 +35,10 @@ class PointerlessOctree {
   void swap(tree_type& rhs);
 
   template <typename OutputIterator>
-  bool search(const BoundingBox& box, OutputIterator& it) const;
+  bool search(const tr::BoundingBox& box, OutputIterator& it) const;
 
   template <typename OutputIterator>
-  bool search(const BoundingBox& box, OutputIterator& it, const index_type& current_index) const;
+  bool search(const tr::BoundingBox& box, OutputIterator& it, const index_type& current_index) const;
 
   tree_type& operator=(tree_type rhs);
 
@@ -50,25 +53,41 @@ class PointerlessOctree {
   struct Node;
 
   Node& init_nodes(
-      const std::vector<std::pair<InputIterator, Point3d>>& v,
+      const std::vector<std::pair<InputIterator, tr::Point3d>>& v,
       std::size_t depth, index_type index_so_far);
 
-  using LeafNodeValue = std::vector<std::pair<InputIterator, Point3d>>;
+  struct LeafNodeValue {
+    using container_type = std::array<std::pair<InputIterator, tr::Point3d>, max_node_size>;
+    container_type values_;
+    std::size_t size_;
+
+    typename container_type::iterator begin() { return values_.begin(); }
+    typename container_type::const_iterator begin() const { return values_.begin(); }
+    typename container_type::const_iterator cbegin() const { return begin(); }
+    typename container_type::iterator end() { return begin() + size_; }
+    typename container_type::const_iterator end() const { return begin() + size_; }
+    typename container_type::const_iterator cend() const { return begin() + size_; }
+  };
+  
+  using MaxDepthValue = std::vector<std::pair<InputIterator, tr::Point3d>>;
   using InternalNodeValue = std::array<index_type, 8>;
 
   union NodeValues {
     NodeValues() : internalValue_() {}
     NodeValues(const LeafNodeValue& v) : leafValue_(v) {}
+    NodeValues(const MaxDepthValue& v) : maxDepthValue_(v) {}
     NodeValues(const InternalNodeValue& v) : internalValue_(v) {}
     ~NodeValues() {}
 
     LeafNodeValue leafValue_;
+    MaxDepthValue maxDepthValue_;
     InternalNodeValue internalValue_;
   };
 
   enum class NodeContents : char {
     INTERNAL,
-    LEAF
+    LEAF,
+    MAX_DEPTH_LEAF
   };
 
   struct Node {
@@ -76,13 +95,15 @@ class PointerlessOctree {
     Node(const Node& rhs) : extrema_(rhs.extrema_), key_(rhs.key_), type_(rhs.type_) {
       if (type_ == NodeContents::INTERNAL) {
         values_.internalValue_ = rhs.values_.internalValue_;
-      } else {
+      } else if (type_ == NodeContents::LEAF) {
         values_.leafValue_ = rhs.values_.leafValue_;
+      } else {
+        values_.maxDepthValue_ = rhs.values_.maxDepthValue_;
       }
     }
     ~Node();
 
-    BoundingBox extrema_;
+    tr::BoundingBox extrema_;
     NodeValues values_;
     index_type key_;
     NodeContents type_;
@@ -109,26 +130,26 @@ template <POINTERLESS_OCTREE_TEMPLATE>
 POINTERLESSOCTREE::PointerlessOctree(InputIterator begin, InputIterator end, PointExtractor f) 
   : functor_(f), depth_(0), size_(0) {
 
-  std::vector<std::pair<InputIterator, Point3d>> v;
+  std::vector<std::pair<InputIterator, tr::Point3d>> v;
   v.reserve(std::distance(begin, end));
 
   for (auto it = begin; it != end; ++it) {
-    v.push_back(std::pair<InputIterator, Point3d>(it, functor_(*it)));
+    v.push_back(std::pair<InputIterator, tr::Point3d>(it, functor_(*it)));
   }
 
-  index_type rootIndex(1); 
+  index_type rootIndex = 1; 
 
   init_nodes(v, 1, rootIndex);
 }
 
 template <POINTERLESS_OCTREE_TEMPLATE>
 typename POINTERLESSOCTREE::Node& POINTERLESSOCTREE::init_nodes(
-    const std::vector<std::pair<InputIterator, Point3d>>& v, 
+    const std::vector<std::pair<InputIterator, tr::Point3d>>& v, 
     std::size_t depth, index_type index_so_far) {
-  BoundingBox extrema = makeBoundingBox(InnerIterator<InputIterator>(v.begin()), InnerIterator<InputIterator>(v.end()));
-  bool at_max_depth = depth == max_depth;
-  bool leaf_node = v.size() <= max_node_size;
-  NodeContents type = leaf_node || at_max_depth ? NodeContents::LEAF : NodeContents::INTERNAL;
+  tr::BoundingBox extrema = makeBoundingBox(tr::InnerIterator<InputIterator>(v.begin()), tr::InnerIterator<InputIterator>(v.end()));
+  NodeContents type = depth == max_depth ?
+    NodeContents::MAX_DEPTH_LEAF : v.size() <= max_node_size ?
+    NodeContents::LEAF : NodeContents::INTERNAL;
   std::size_t node_depth = depth;
 
   Node n;
@@ -136,21 +157,27 @@ typename POINTERLESSOCTREE::Node& POINTERLESSOCTREE::init_nodes(
   n.key_ = index_so_far;
   n.type_ = type;
 
-  if (type == NodeContents::LEAF) {
-    n.values_.leafValue_ = v;
+  if (type == NodeContents::MAX_DEPTH_LEAF) {
+    n.values_.maxDepthValue_ = v;
     size_ += v.size();
     depth_ = std::max(node_depth, depth_);
+  } else if (type == NodeContents::LEAF) {
+    std::array<std::pair<InputIterator, tr::Point3d>, max_node_size> a;
+    std::copy(v.begin(), v.end(), a.begin());
+    LeafNodeValue val{a, v.size()};
+    n.values_.leafValue_ = val;
+    size_ += v.size();
   } else {
-    std::array<std::vector<std::pair<InputIterator, Point3d>>, 8> childVectors;
+    std::array<std::vector<std::pair<InputIterator, tr::Point3d>>, 8> childVectors;
     auto childExtrema = extrema.partition();
     for (unsigned char child = 0; child < 8; ++child) {
-      std::vector<std::pair<InputIterator, Point3d>>& childVector = childVectors[child];
+      std::vector<std::pair<InputIterator, tr::Point3d>>& childVector = childVectors[child];
       childVector.reserve(v.size() / 8);
 
       std::copy_if(
         v.begin(), v.end(), std::back_inserter(childVector),
-        [&childExtrema, child](const std::pair<InputIterator, Point3d>& element) -> bool {
-          Point3d p = std::get<1>(element);
+        [&childExtrema, child](const std::pair<InputIterator, tr::Point3d>& element) -> bool {
+          tr::Point3d p = std::get<1>(element);
 
           return childExtrema[child].contains(p);
         }
@@ -158,7 +185,7 @@ typename POINTERLESSOCTREE::Node& POINTERLESSOCTREE::init_nodes(
 
       std::array<index_type, 8> values;
 
-      index_type morton_index = (index_so_far << 3) | index_type(child);
+      index_type morton_index = (index_so_far << 3) + child;
 
       values[child] = childVector.empty()
         ? index_type(0)
@@ -189,6 +216,8 @@ POINTERLESSOCTREE::Node::~Node() {
     case NodeContents::INTERNAL:
       values_.internalValue_.~InternalNodeValue();
       break;
+    case NodeContents::MAX_DEPTH_LEAF:
+      values_.maxDepthValue_.~MaxDepthValue();
     case NodeContents::LEAF:
       values_.leafValue_.~LeafNodeValue();
       break;
@@ -199,28 +228,39 @@ POINTERLESSOCTREE::Node::~Node() {
 
 template <POINTERLESS_OCTREE_TEMPLATE>
 template <typename OutputIterator>
-bool POINTERLESSOCTREE::search(const BoundingBox& b, OutputIterator& out) const {
+bool POINTERLESSOCTREE::search(const tr::BoundingBox& b, OutputIterator& out) const {
   return search(b, out, 1);
 }
 
 template <POINTERLESS_OCTREE_TEMPLATE>
 template <typename OutputIterator>
-bool POINTERLESSOCTREE::search(const BoundingBox& b, OutputIterator& out, const index_type& current_index) const {
+bool POINTERLESSOCTREE::search(const tr::BoundingBox& b, OutputIterator& out, const index_type& current_index) const {
   bool success = false;
-  if (nodes_.find(current_index) != nodes_.end() && current_index != index_type(0)) {
+  if (current_index != 0 && nodes_.find(current_index) != nodes_.end()) {
     const Node& n = nodes_.at(current_index);
     if (n.type_ == NodeContents::INTERNAL) {
       index_type next_index = current_index << 3;
       for (unsigned char octant = 0; octant < 8; ++octant) {
         index_type child_index = next_index | index_type(octant);
-        if (nodes_.find(child_index) != nodes_.end() && child_index != index_type(0)) {
-          success |= search(b, out, child_index);
+        if (nodes_.find(child_index) != nodes_.end()) {
+          const Node& child_node = nodes_.at(child_index);
+          if (tr::invalidBox != b.overlap(child_node.extrema_)) {
+            success |= search(b, out, child_index);
+          }
+        }
+      }
+    } else if (n.type_ == NodeContents::MAX_DEPTH_LEAF) {
+      for (const auto& value : n.values_.maxDepthValue_) {
+        if (b.contains(value.second)) {
+          *out = value.first;
+          ++out;
+          success = true;
         }
       }
     } else {
-      for (auto value : n.values_.leafValue_) {
-        if (b.contains(std::get<1>(value))) {
-          *out = std::get<0>(value);
+      for (const auto& value : n.values_.leafValue_) {
+        if (b.contains(value.second)) {
+          *out = value.first;
           ++out;
           success = true;
         }
@@ -228,6 +268,8 @@ bool POINTERLESSOCTREE::search(const BoundingBox& b, OutputIterator& out, const 
     }
   }
   return success;
+}
+
 }
 
 #endif // defined POINTERLESS_OCTREE_CPU_H
