@@ -1,0 +1,3 @@
+[submodule "build/SpatialDataStructuresBenchmark"]
+	path = build/SpatialDataStructuresBenchmark
+	url = https://github.com/jeffamelang/SpatialDataStructuresBenchmark.git
